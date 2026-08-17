@@ -1,6 +1,6 @@
 ---
 name: wendung-sdk
-description: Install, configure, and use @wendung/sdk, the browser SDK for Wendung funnel analytics. Use when adding Wendung to a web project (Next.js, React, Vue, or any browser app), instrumenting funnel steps, identifying users, or debugging event delivery. Covers init options, batching and retry behavior, identity and session rules, and framework patterns.
+description: Install, configure, and use @wendung/sdk, the browser SDK for Wendung funnel analytics. Use when adding Wendung to a web project (Next.js, React, Vue, or any browser app), instrumenting funnel steps, identifying users, debugging event delivery, or answering questions about Wendung funnels, conversion, and drop-off. Covers init options, batching and retry behavior, identity and session rules, framework patterns, and the Wendung MCP servers for live analytics and docs search.
 ---
 
 # Wendung SDK
@@ -9,7 +9,20 @@ Wendung is funnel analytics. Apps send named step events; the dashboard turns th
 
 The SDK is browser-only. Never call it from server code (Next.js Server Components, Route Handlers, Server Actions, SSR). Importing it on the server is safe (no import-time side effects); calling it is not.
 
+## Docs and MCP servers
+
 Full docs: https://docs.wendung.app. Append `.md` to any page URL for raw markdown.
+
+Wendung provides two MCP servers. Everything in this skill works without them, but use them when they are connected:
+
+| Server | URL | Use for | Sign-in |
+|---|---|---|---|
+| `wendung` | https://api.wendung.app/mcp | Workspaces, projects, funnels, and live analytics: `list_workspaces`, `list_projects`, `list_funnels`, analytics tools, `get_ingest_health` | OAuth |
+| `wendung-docs` | https://docs.wendung.app/mcp | Searching the Wendung docs | None |
+
+- If the `wendung` server is connected, use it for anything involving the user's real data: verifying that events arrive, listing funnels, and answering conversion and drop-off questions with real numbers. Write tools (creating or editing funnels and dashboards) only work if the user granted write access at sign-in.
+- If the `wendung-docs` server is connected, search the docs through it. Otherwise fetch pages from https://docs.wendung.app with `.md` appended.
+- If neither server is connected and the task would benefit from one, offer to register them. With the user's permission, fetch https://docs.wendung.app/prompt.md and follow the registration steps for your agent. The `wendung` server requires OAuth sign-in, and most agents need a restart before newly registered MCP tools appear; tell the user both.
 
 ## Install and initialize
 
