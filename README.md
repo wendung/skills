@@ -1,6 +1,6 @@
 # Wendung skills
 
-Agent skills for [Wendung](https://wendung.app) funnel analytics. Skills teach AI coding agents (Claude Code, Cursor, Codex, and others) how to work with Wendung without guessing at APIs.
+Agent skills for [Wendung](https://wendung.app) funnel and web analytics. Skills teach AI coding agents (Claude Code, Cursor, Codex, and others) how to work with Wendung without guessing at APIs.
 
 ## Install
 
@@ -18,7 +18,7 @@ npx skills add wendung/skills --skill wendung-sdk
 
 | Skill | Description |
 |---|---|
-| [`wendung-sdk`](skills/wendung-sdk/SKILL.md) | Install, configure, and use `@wendung/sdk`, the browser SDK for Wendung funnel analytics. Covers init options, batching and retry behavior, identity and session rules, and framework patterns. |
+| [`wendung-sdk`](skills/wendung-sdk/SKILL.md) | Install, configure, and use `@wendung/sdk`, the browser SDK for Wendung funnel and web analytics. Covers init options, pageview tracking, batching and retry behavior, identity and session rules, and framework patterns. |
 
 ## Contributing
 
