@@ -1,6 +1,6 @@
 ---
 name: wendung-sdk
-description: Install, configure, and use @wendung/sdk, the browser SDK for Wendung funnel and web analytics. Use when adding Wendung to a web project (Next.js, React, Vue, or any browser app), instrumenting funnel steps, turning on pageview tracking, identifying users, debugging event delivery, or answering questions about Wendung funnels, conversion, drop-off, and site traffic. Covers init options, batching and retry behavior, identity and session rules, framework patterns, and the Wendung MCP servers for live analytics and docs search.
+description: Install, configure, and use @wendung/sdk, the browser SDK for Wendung funnel and web analytics. Use when adding Wendung to a web project (Next.js, React, Vue, or any browser app), getting a project and API key, instrumenting funnel steps, turning on pageview tracking, identifying users, fixing allowed origins or 403 errors, debugging event delivery, or answering questions about Wendung funnels, conversion, drop-off, and site traffic. Covers account and project setup, init options, batching and retry behavior, identity and session rules, framework patterns, and the Wendung MCP servers for live analytics and docs search.
 ---
 
 # Wendung SDK
@@ -17,12 +17,23 @@ Wendung provides two MCP servers. Everything in this skill works without them, b
 
 | Server | URL | Use for | Sign-in |
 |---|---|---|---|
-| `wendung` | https://api.wendung.app/mcp | Workspaces, projects, funnels, and live analytics: `list_workspaces`, `list_projects`, `list_funnels`, analytics tools, `get_pageview_summary`, `get_pageview_timeseries`, `get_pageview_breakdown`, `get_ingest_health` | OAuth |
+| `wendung` | https://api.wendung.app/mcp | Workspaces, projects, funnels, and live analytics: `list_workspaces`, `list_projects`, `list_funnels`, analytics tools, `get_pageview_summary`, `get_pageview_timeseries`, `get_pageview_breakdown`, `get_ingest_health`, `get_ingest_logs` | OAuth |
 | `wendung-docs` | https://docs.wendung.app/mcp | Searching the Wendung docs | None |
 
-- If the `wendung` server is connected, use it for anything involving the user's real data: verifying that events arrive, listing funnels, and answering conversion and drop-off questions with real numbers. Write tools (creating or editing funnels and dashboards) only work if the user granted write access at sign-in.
+- If the `wendung` server is connected, use it for anything involving the user's real data: verifying that events arrive, listing funnels, and answering conversion and drop-off questions with real numbers.
+- Some tools exist only if the user granted write access at sign-in: `create_project` (returns the new project's API key), `list_api_keys`, `update_project` (including allowed origins and Dev mode), and the tools that create, edit, or delete funnels and dashboards. Ask before calling any of them. Projects and keys cannot be deleted through MCP.
 - If the `wendung-docs` server is connected, search the docs through it. Otherwise fetch pages from https://docs.wendung.app with `.md` appended.
 - If neither server is connected and the task would benefit from one, offer to register them. With the user's permission, fetch https://docs.wendung.app/prompt.md and follow the registration steps for your agent. The `wendung` server requires OAuth sign-in, and most agents need a restart before newly registered MCP tools appear; tell the user both.
+
+## Account, project, and API key
+
+The SDK needs the publishable API key of a Wendung project. Before changing code, confirm the user has one, and point them to the missing step:
+
+1. **Account.** Sign up at https://dashboard.wendung.app/auth/sign-up, or sign in at https://dashboard.wendung.app/auth/sign-in. A new account must confirm its email address before the dashboard opens.
+2. **Workspace and project.** A new account creates a workspace first, then a project inside it. The free plan allows one project and does not include pageviews.
+3. **API key.** Every project has a key named Default under the project's Settings → API Keys. Keys start with `pk_`. They are publishable: the key ships in the browser bundle, so the user can paste it into chat or put it in an env file themselves.
+
+If the `wendung` MCP server is connected, `list_workspaces` and `list_projects` show what already exists. With write access, `list_api_keys` returns a project's key and `create_project` creates a project and returns its key.
 
 ## Install and initialize
 
@@ -42,9 +53,9 @@ Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load t
 <script defer src="https://cdn.wendung.app/sdk/v0/wendung.js" data-api-key="pk_..." data-track-pageviews></script>
 ```
 
-The publishable key comes from Settings → API Keys in the Wendung dashboard. In projects, read it from an env var (`NEXT_PUBLIC_WENDUNG_KEY`, `VITE_WENDUNG_KEY`, or equivalent). If no key is available, ask the user for it; do not invent one.
+In projects, read the key from an env var (`NEXT_PUBLIC_WENDUNG_KEY`, `VITE_WENDUNG_KEY`, or equivalent). If no key is available, ask the user for it; do not invent one. Ingest rejects any key that does not start with `pk_`.
 
-Call `init()` once at app startup, client-side, before any other Wendung call. Every other method throws `[Wendung] Call .init() first` until it runs. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
+Call `init()` once at app startup, client-side, before any other Wendung call. Every other method except `getConsent()` throws `[Wendung] Call .init() first` until it runs. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
 
 ### init() options
 
@@ -57,6 +68,17 @@ Call `init()` once at app startup, client-side, before any other Wendung call. E
 | `debug` | `false` | Adds `[Wendung]` lifecycle logs. `[Wendung - Warning]` messages always log. |
 | `trackPageviews` | `false` | `false` or omitted disables automatic pageviews. `true` enables full pageviews only with granted consent. `'auto'` enables aggregate pageviews while pending, then full pageviews after consent. Denial stops both. Tracks the initial load and history navigation; aggregate collection ignores changes to only the query string or fragment. Pageviews use the plan's pageview allowance and appear in reports for registered sites. |
 | `consent` | `'granted'` | `'pending'` allows only aggregate pageviews with `trackPageviews: 'auto'`; otherwise it stops collection. It does not read or write browser storage. `'denied'` stops all collection, discards queued events, and removes stored SDK identifiers. The app must pass its saved choice on every load. Script tag: `data-consent="pending"`. |
+
+### Allowed origins
+
+Ingest accepts events only from origins on the project's allowed origins list. A new project starts with an empty list and rejects every event with `403` until the user adds an origin, including on localhost. Tell the user this before they test:
+
+- Add each production origin under the project's Settings → Allowed origins. An origin is scheme, host, and port only: `https://example.com` and `https://www.example.com` are different origins.
+- For local development, turn on Dev mode on the same page. For 24 hours it accepts loopback origins on any port (`localhost`, `*.localhost`, `127.x.x.x`, `[::1]`), then switches itself off. LAN addresses such as `http://192.168.1.20:3000` are not loopback; add them to the list to test from another device.
+- Requests without an `Origin` header are always rejected, so events cannot be sent from server code, Node scripts, or `curl`.
+- Changes can take a few minutes to reach the ingest endpoint.
+
+With MCP write access, `update_project` sets `allowedOrigins` and `devMode`. Ask before changing either.
 
 ## API
 
@@ -140,6 +162,15 @@ Same rules everywhere: init once at startup in browser code, `step()` from event
 
 ## Debugging
 
-Set `debug: true` and watch the console. `[Wendung - Warning]` messages tell you what happened: a 4xx status means the key or payload is wrong and the batch was dropped; re-queuing messages mean transient network or 5xx failures; `fetch is unavailable` means an unsupported environment. Verify end-to-end delivery in the dashboard, or through the Wendung MCP server's `get_ingest_health` tool if it is connected. Full reference: https://docs.wendung.app/configuration/debugging.md
+Set `debug: true` and watch the console. A delivered batch logs `[Wendung] ingest accepted batch`. `[Wendung - Warning]` messages always log. `Endpoint rejected batch ... with status N; dropping events` means ingest refused the batch and it will not be retried:
 
-A `403` is the one status that has nothing to do with the key or the payload: the page's origin is not on the project's allowed origins list. A project with an empty list accepts every origin, so this only appears once someone adds the first one, and from then on `http://localhost:3000` is rejected along with everything else. Tell the user to turn on Dev mode in Settings → Allowed origins. It accepts loopback origins and requests sent without an `Origin` header for 24 hours, then switches itself off. The change takes up to a minute to reach the ingest endpoint.
+| Status | Cause | Fix |
+|---|---|---|
+| `401` | Missing, malformed, or unknown API key | Check the env var reaches the browser bundle and holds the project's `pk_` key. |
+| `403` | The page's origin is not allowed | See [Allowed origins](#allowed-origins). A new project rejects every origin. |
+| `429` | Monthly event quota used up, or rate limited | Check usage and plan in the dashboard. |
+| `400`, `413` | Invalid payload or body too large | Check `step()` properties are plain, JSON-serializable objects. |
+
+Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment.
+
+Verify end-to-end delivery on the project's Events page in the dashboard, or with the `wendung` MCP server's `get_ingest_health` and `get_ingest_logs` tools if it is connected. Full reference: https://docs.wendung.app/configuration/debugging.md
