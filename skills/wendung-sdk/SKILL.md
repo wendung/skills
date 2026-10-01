@@ -21,9 +21,9 @@ Wendung provides two MCP servers. Everything in this skill works without them, b
 | `wendung-docs` | https://docs.wendung.app/mcp | Searching the Wendung docs | None |
 
 - If the `wendung` server is connected, use it for anything involving the user's real data: verifying that events arrive, listing funnels, and answering conversion and drop-off questions with real numbers.
-- Some tools exist only if the user granted write access at sign-in: `create_project` (returns the new project's API key), `list_api_keys`, `update_project` (including allowed origins and Dev mode), and the tools that create, edit, or delete funnels and dashboards. Ask before calling any of them. Projects and keys cannot be deleted through MCP.
+- Some tools exist only if the client requests `mcp:write` and the user grants it at sign-in: `create_project` (returns the new project's API key), `list_api_keys`, `update_project` (including allowed origins and Dev mode), and the tools that create, edit, or delete funnels and dashboards. Ask before calling any of them. Projects and keys cannot be deleted through MCP.
 - If the `wendung-docs` server is connected, search the docs through it. Otherwise fetch pages from https://docs.wendung.app with `.md` appended.
-- If neither server is connected and the task would benefit from one, offer to register them. With the user's permission, fetch https://docs.wendung.app/prompt.md and follow the registration steps for your agent. The `wendung` server requires OAuth sign-in, and most agents need a restart before newly registered MCP tools appear; tell the user both.
+- If neither server is connected and the task would benefit from one, offer to register them. With the user's permission, fetch https://docs.wendung.app/prompt.md and follow the registration, OAuth, and restart or reconnect steps for that host. Verify `list_workspaces` after the tools become available; if a restart is still needed, report verification as pending. SDK integration does not require either MCP server.
 
 ## Account, project, and API key
 
@@ -37,6 +37,8 @@ If the `wendung` MCP server is connected, `list_workspaces` and `list_projects` 
 
 ## Install and initialize
 
+Before testing delivery, allow the app's origins or enable Dev mode as described below. Choose how the app supplies the visitor's consent state and whether pageviews are wanted.
+
 ```bash
 npm install @wendung/sdk
 ```
@@ -44,8 +46,15 @@ npm install @wendung/sdk
 ```ts
 import { Wendung } from '@wendung/sdk'
 
-Wendung.init({ apiKey: 'pk_...' })
+Wendung.init({
+  apiKey: 'pk_...',
+  consent: 'pending', // Use the saved visitor choice when available.
+  trackPageviews: false, // Optional: true or 'auto' for web analytics.
+  debug: false, // Optional: true during development.
+})
 ```
+
+Only `apiKey` is required. This example collects nothing while pending. Connect `setConsent()` to the app's consent manager and restore its saved choice on each load. If omitted, `consent` defaults to `'granted'`. Add optional configuration to this same `init()` call.
 
 Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load the same SDK from the CDN instead. The tag initializes the SDK from its data attributes and exposes `Wendung` on `window`; `data-track-pageviews` accepts a bare attribute or `"true"` for consent-required pageviews, `"auto"` for aggregate pageviews while pending and full pageviews after consent, or `"false"` to disable automatic pageviews. `data-debug` is a presence flag; `data-endpoint` overrides the ingest URL. Use `defer`, never `async`, and give your own scripts that call `Wendung` `defer` too. `/sdk/v0/wendung.js` tracks the latest 0.x release; `/sdk/<version>/wendung.js` pins one. Guide: https://docs.wendung.app/guides/script-tag
 
@@ -86,25 +95,17 @@ With MCP write access, `update_project` sets `allowedOrigins` and `devMode`. Ask
 |---|---|
 | `Wendung.step(name, properties?)` | Queues an event. `name`: string, 1–100 chars. `properties`: plain object only. Invalid input logs a warning and the call is ignored; nothing throws. |
 | `Wendung.page()` | Queues a `$pageview` for the current URL. Only needed with `trackPageviews` off, or for routers that change the URL without the history API. Calling it on a navigation the SDK already observed records the page twice. |
-| `Wendung.identify(userId, traits?)` | Replaces identity wholesale, traits included. No merging, so pass the full trait set every time. Identity persists in localStorage and is restored by `init()`. Identifying a different user starts a new session; the first identify in a session keeps it, and the session's earlier anonymous events are attributed to that user at query time. |
+| `Wendung.identify(userId, traits?)` | Updates identity for subsequent events; it does not queue an event or consume event quota by itself. Replaces identity wholesale, traits included. No merging, so pass the full trait set every time. Identity persists in localStorage and is restored by `init()`. Identifying a different user starts a new session; identifying an anonymous session keeps it, and the session's earlier anonymous events are attributed to that user at query time. |
 | `Wendung.flush()` | Sends at most one batch per call. Resolves after the request settles; never rejects. |
 | `Wendung.sendBeacon()` | Drains the entire queue as parallel `fetch(..., { keepalive: true })` requests. Despite the name it never uses `navigator.sendBeacon`. This is what runs automatically on page hide. |
-| `Wendung.reset()` | Call on logout. Flushes pending events first (delivered with the identity they were tracked under), then starts a new session and clears identity including the persisted copy. |
+| `Wendung.reset()` | Call on logout. Starts a non-awaited `sendBeacon()` delivery attempt for queued events, then clears the current and persisted identity and rotates the session and anonymous IDs. Queued events keep the identity captured when tracked. Delivery is not guaranteed; normal retry and drop rules still apply. |
 | `Wendung.destroy()` | Stops the timer and listeners, then fires one final non-awaited batch; remaining events are lost. If delivery matters, `await Wendung.sendBeacon()` first. After destroy, every call throws until `init()` runs again. |
 | `Wendung.setConsent(state)` | `'granted'` starts full analytics. After pending aggregate collection, it sends the queued aggregate batch without recounting the current page or linking earlier pageviews to the visitor. Call `identify()` again if the user is known. `'denied'` stops collection, discards the queue, and clears SDK identifiers. `'pending'` discards the current queue and leaves storage untouched, collecting only aggregate pageviews if `trackPageviews` is `'auto'`. Repeating the current state does nothing. |
 | `Wendung.getConsent()` | Returns the current state. Do not guard `page()` or `flush()` on granted consent if pending aggregate collection is intended. The SDK enforces the configured behavior. |
 
 ## Pageviews and consent
 
-Use this configuration when the user wants aggregate pageviews before a choice and full analytics after consent:
-
-```ts
-Wendung.init({
-  apiKey: 'pk_...',
-  trackPageviews: 'auto',
-  consent: 'pending',
-})
-```
+Set `trackPageviews: 'auto'` in the initialization above when the user wants aggregate pageviews before a choice and full analytics after consent. Use `consent: 'pending'` until the app has a saved choice.
 
 Restore the saved choice on later loads and call `setConsent()` from the consent manager. Keep `trackPageviews: true` when the user wants no collection before consent. Do not add a separate `pageviewMode` option.
 
@@ -118,7 +119,7 @@ Pageview totals include aggregate and consented traffic. Unique visitors, curren
 - Retry: a 4xx response drops the batch permanently. 5xx and network errors requeue it at the front with the same `batchId`. No backoff, no retry cap.
 - The queue caps at 1000 events; overflow drops the oldest events.
 - With granted consent, sessions use a UUID persisted in `sessionStorage` under `@wendung/sdk/session/v1`, with a 30 minute idle timeout and 24 hour maximum. Identity is separate, persisted in `localStorage` under `@wendung/sdk/identity/v1`, and restored on `init()`.
-- There is no payload byte limit; the only cap is 100 events per request.
+- Ingest accepts at most 100 events and a 51,200-byte (50 KiB) request body. Each event's `properties` object may have at most 20 top-level keys. Property values and identity traits have no separate size cap in the schema, but the whole request must fit the body limit. The SDK batches by event count, not bytes; reduce properties, traits, or `maxBatchSize` if batches exceed it.
 
 ## Framework patterns
 
@@ -135,7 +136,10 @@ import { Wendung } from '@wendung/sdk'
 
 export function WendungProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    Wendung.init({ apiKey: process.env.NEXT_PUBLIC_WENDUNG_KEY! })
+    Wendung.init({
+      apiKey: process.env.NEXT_PUBLIC_WENDUNG_KEY!,
+      consent: 'pending', // Use the saved visitor choice when available.
+    })
     return () => Wendung.destroy()
   }, [])
 
@@ -143,7 +147,7 @@ export function WendungProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
-Wrap `children` with `<WendungProvider>` in `app/layout.tsx`. For web analytics, choose `trackPageviews: true` or `'auto'` as described above; the SDK follows App Router navigations on its own. Identify from a null component that watches the auth session. Full guide: https://docs.wendung.app/guides/nextjs.md
+Wrap `children` with `<WendungProvider>` in `app/layout.tsx` and connect the consent manager to `setConsent()`. Identify after consent is granted, including when the user is already signed in. For web analytics, choose `trackPageviews: true` or `'auto'` as described above; the SDK follows App Router navigations on its own. Identify from a null component that watches the auth session and consent state. Full guide: https://docs.wendung.app/guides/nextjs.md
 
 ### React SPA (Vite, React Router)
 
@@ -169,7 +173,8 @@ Set `debug: true` and watch the console. A delivered batch logs `[Wendung] inges
 | `401` | Missing, malformed, or unknown API key | Check the env var reaches the browser bundle and holds the project's `pk_` key. |
 | `403` | The page's origin is not allowed | See [Allowed origins](#allowed-origins). A new project rejects every origin. |
 | `429` | Monthly event quota used up, or rate limited | Check usage and plan in the dashboard. |
-| `400`, `413` | Invalid payload or body too large | Check `step()` properties are plain, JSON-serializable objects. |
+| `400` | Invalid payload | Use plain, JSON-serializable `step()` properties with at most 20 top-level keys. Check the response reason for other validation errors. |
+| `413` | Request body exceeds 51,200 bytes (50 KiB) | Reduce properties, traits, or `maxBatchSize`. The SDK does not split batches by bytes. |
 
 Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment.
 
