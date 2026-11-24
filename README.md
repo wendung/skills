@@ -18,7 +18,7 @@ npx skills add wendung/skills --skill wendung-sdk
 
 | Skill | Description |
 |---|---|
-| [`wendung-sdk`](skills/wendung-sdk/SKILL.md) | Install, configure, and use `@wendung/sdk`, the browser SDK for Wendung funnel and web analytics. Covers init options, pageview tracking, batching and retry behavior, identity and session rules, and framework patterns. |
+| [`wendung-sdk`](skills/wendung-sdk/SKILL.md) | Install, configure, and use `@wendung/sdk` for Wendung funnel and web analytics, in the browser and on the server. Covers init options, pageview tracking, server-side events, batching and retry behavior, identity and session rules, and framework patterns. |
 
 ## Contributing
 
