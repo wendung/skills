@@ -7,7 +7,7 @@ description: Install, configure, and use @wendung/sdk, the browser SDK for Wendu
 
 Wendung is funnel and web analytics. Apps send named step events, and the dashboard turns them into funnels with conversion, drop-off, and timing data. Full pageviews feed visitor, session, page, source, location, and device reports per site. Aggregate pageviews contribute pageview counts without visitor or session counts. `@wendung/sdk` is the browser SDK.
 
-The SDK is browser-only. Never call it from server code (Next.js Server Components, Route Handlers, Server Actions, SSR). Importing it on the server is safe (no import-time side effects); calling it is not.
+The default entry point is browser-only. Never call `Wendung` from server code (Next.js Server Components, Route Handlers, Server Actions, SSR). Importing it on the server is safe (no import-time side effects); calling it is not. Funnel steps that happen only on the server, such as payments confirmed by a webhook, use `@wendung/sdk/server` with a secret key. See [Server-side events](#server-side-events).
 
 ## Docs and MCP servers
 
@@ -31,7 +31,7 @@ The SDK needs the publishable API key of a Wendung project. Before changing code
 
 1. **Account.** Sign up at https://dashboard.wendung.app/auth/sign-up, or sign in at https://dashboard.wendung.app/auth/sign-in. A new account must confirm its email address before the dashboard opens.
 2. **Workspace and project.** A new account creates a workspace first, then a project inside it. The free plan allows one project and does not include pageviews.
-3. **API key.** Every project has a key named Default under the project's Settings → API Keys. Keys start with `pk_`. They are publishable: the key ships in the browser bundle, so the user can paste it into chat or put it in an env file themselves.
+3. **API key.** Every project has a key named Default under the project's Settings → API keys. Keys start with `pk_`. They are publishable: the key ships in the browser bundle, so the user can paste it into chat or put it in an env file themselves.
 
 If the `wendung` MCP server is connected, `list_workspaces` and `list_projects` show what already exists. With write access, `list_api_keys` returns a project's key and `create_project` creates a project and returns its key.
 
@@ -62,7 +62,7 @@ Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load t
 <script defer src="https://cdn.wendung.app/sdk/v0/wendung.js" data-api-key="pk_..." data-track-pageviews></script>
 ```
 
-In projects, read the key from an env var (`NEXT_PUBLIC_WENDUNG_KEY`, `VITE_WENDUNG_KEY`, or equivalent). If no key is available, ask the user for it; do not invent one. Ingest rejects any key that does not start with `pk_`.
+In projects, read the key from an env var (`NEXT_PUBLIC_WENDUNG_KEY`, `VITE_WENDUNG_KEY`, or equivalent). If no key is available, ask the user for it; do not invent one. The browser SDK needs a publishable key that starts with `pk_`; ingest rejects secret `sk_` keys from a browser.
 
 Call `init()` once at app startup, client-side, before any other Wendung call. Every other method except `getConsent()` throws `[Wendung] Call .init() first` until it runs. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
 
@@ -163,6 +163,29 @@ Same rules everywhere: init once at startup in browser code, `step()` from event
 - When the app needs consent for analytics (EU visitors, an existing cookie banner), init with `consent: 'pending'`, restore the saved choice on later loads, and call `setConsent()` from the banner's callbacks. Do not delay `init()` instead: tracking calls throw before `init()`. Pending consent drops custom events and identification; it collects aggregate pageviews only with `trackPageviews: 'auto'`. Guide: https://docs.wendung.app/guides/consent.md
 - Do not model pageviews as steps. Funnels are built from actions (`signup_completed`, `checkout_started`); traffic comes from `trackPageviews`, which the dashboard reports per site.
 - Properties carry event-specific context. User-level data belongs in identify traits.
+
+## Server-side events
+
+Use this when a funnel step happens only on the server: a Stripe webhook, a subscription renewal, a background job. Guide: https://docs.wendung.app/guides/server-events.md
+
+- The user creates a secret key (`sk_`) under the project's Settings → API keys and adds it to the server environment, for example as `WENDUNG_SECRET_KEY`. Do not ask them to paste it into chat. MCP tools can't create or reveal secret keys.
+- Server steps join browser steps by user ID only. The browser must call `identify()` with the same ID. Anonymous visitors can't receive server steps.
+- `step()` requires the source event's own `id` and `timestamp` so retries are stored once. Timestamps must be within the last 7 days and at most 5 minutes in the future. Names can't start with `$`.
+- `step()` waits for ingest, retries `429`, `5xx`, and network errors up to three attempts, and never throws.
+- Server steps skip browser consent. Check the user's consent on the server before sending.
+
+```ts
+import { WendungServer } from '@wendung/sdk/server'
+
+const wendung = new WendungServer({ secretKey: process.env.WENDUNG_SECRET_KEY! })
+
+await wendung.step('payment_succeeded', {
+  id: event.id,
+  userId: appUserId,
+  timestamp: new Date(event.created * 1000),
+  properties: { plan: 'pro' },
+})
+```
 
 ## Debugging
 
