@@ -1,6 +1,6 @@
 ---
 name: wendung-sdk
-description: Install, configure, and use @wendung/sdk, the browser SDK for Wendung funnel and web analytics. Use when adding Wendung to a web project (Next.js, React, Vue, or any browser app), getting a project and API key, instrumenting funnel steps, turning on pageview tracking, identifying users, fixing allowed origins or 403 errors, debugging event delivery, or answering questions about Wendung funnels, conversion, drop-off, and site traffic. Covers account and project setup, init options, batching and retry behavior, identity and session rules, framework patterns, and the Wendung MCP servers for live analytics and docs search.
+description: Install, configure, and use @wendung/sdk for Wendung funnel and web analytics, in the browser and on the server. Use when adding Wendung to a web project (Next.js, React, Vue, or any browser app), getting a project and API key, instrumenting funnel steps, sending steps from server code such as Stripe webhooks or background jobs with a secret key, turning on pageview tracking, identifying users, fixing allowed origins or 403 errors, debugging event delivery, or answering questions about Wendung funnels, conversion, drop-off, and site traffic. Covers account and project setup, init options, batching and retry behavior, identity and session rules, framework patterns, server-side events, and the Wendung MCP servers for live analytics and docs search.
 ---
 
 # Wendung SDK
@@ -84,7 +84,7 @@ Ingest accepts events only from origins on the project's allowed origins list. A
 
 - Add each production origin under the project's Settings → Allowed origins. An origin is scheme, host, and port only: `https://example.com` and `https://www.example.com` are different origins.
 - For local development, turn on Dev mode on the same page. For 24 hours it accepts loopback origins on any port (`localhost`, `*.localhost`, `127.x.x.x`, `[::1]`), then switches itself off. LAN addresses such as `http://192.168.1.20:3000` are not loopback; add them to the list to test from another device.
-- Requests without an `Origin` header are always rejected, so events cannot be sent from server code, Node scripts, or `curl`.
+- Requests with a publishable key and no `Origin` header are rejected, so the browser SDK can't send events from server code, Node scripts, or `curl`. Server code sends steps with a secret key instead. See [Server-side events](#server-side-events).
 - Changes can take a few minutes to reach the ingest endpoint.
 
 With MCP write access, `update_project` sets `allowedOrigins` and `devMode`. Ask before changing either.
