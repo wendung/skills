@@ -125,27 +125,27 @@ Pageview totals include aggregate and consented traffic. Unique visitors, curren
 
 ### Next.js (App Router)
 
-Initialize in a client provider; the root layout stays a server component.
+Initialize at module scope in a client provider; the root layout stays a server component.
 
 ```tsx
 // app/providers/wendung-provider.tsx
 'use client'
 
-import { useEffect } from 'react'
 import { Wendung } from '@wendung/sdk'
 
-export function WendungProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    Wendung.init({
-      apiKey: process.env.NEXT_PUBLIC_WENDUNG_KEY!,
-      consent: 'pending', // Use the saved visitor choice when available.
-    })
-    return () => Wendung.destroy()
-  }, [])
+if (typeof window !== 'undefined') {
+  Wendung.init({
+    apiKey: process.env.NEXT_PUBLIC_WENDUNG_KEY!,
+    consent: 'pending', // Use the saved visitor choice when available.
+  })
+}
 
+export function WendungProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 ```
+
+Do not call `init()` in a `useEffect`. React runs child effects before parent effects, so `step()` or `identify()` in a page's effect would run before `init()` and be dropped.
 
 Wrap `children` with `<WendungProvider>` in `app/layout.tsx` and connect the consent manager to `setConsent()`. Identify after consent is granted, including when the user is already signed in. For web analytics, choose `trackPageviews: true` or `'auto'` as described above; the SDK follows App Router navigations on its own. Identify from a null component that watches the auth session and consent state. Full guide: https://docs.wendung.app/guides/nextjs.md
 
