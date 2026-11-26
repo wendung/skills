@@ -32,7 +32,7 @@ The SDK needs the publishable API key of a Wendung project. Before changing code
 
 1. **Account.** Sign up at https://dashboard.wendung.app/auth/sign-up, or sign in at https://dashboard.wendung.app/auth/sign-in. A new account must confirm its email address before the dashboard opens.
 2. **Workspace and project.** A new account creates a workspace first, then a project inside it. The free plan allows one project and does not include pageviews.
-3. **API key.** Every project has a key named Default under the project's Settings → API keys. Keys start with `pk_`. They are publishable, not secret: the key ships in the browser bundle, and ingest accepts it only from origins the project allows. The user adds it to the app's env file.
+3. **API key.** Every project has a key named Default under the project's Settings → API keys. Keys start with `pk_`. They are publishable, not secret: the key ships in the browser bundle, and ingest accepts it only from origins the project allows. The user adds it to the app's env file, or to the script tag on sites without a build step.
 
 If the `wendung` MCP server is connected, `list_workspaces` and `list_projects` show what already exists. With write access, `list_api_keys` returns a project's publishable key and `create_project` creates a project and returns its key. Write a returned key to the env file instead of repeating it in chat.
 
