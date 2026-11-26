@@ -20,7 +20,7 @@ The `wendung` plugin installs the `wendung-sdk` skill and connects two Wendung M
 
 | Server | URL | What it does | Sign-in |
 |---|---|---|---|
-| `wendung` | https://api.wendung.app/mcp | Reads your workspaces, projects, funnels and live analytics. Read access unless you grant write access at sign-in | OAuth with your Wendung account |
+| `wendung` | https://api.wendung.app/mcp | Reads your workspaces, projects, funnels and live analytics. Read access by default. Write tools need a client that requests write access and your approval at sign-in | OAuth with your Wendung account |
 | `wendung-docs` | https://docs.wendung.app/mcp | Searches the Wendung docs | None |
 
 The skill may also fetch pages from https://docs.wendung.app. The plugin runs no local code.
