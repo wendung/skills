@@ -64,7 +64,7 @@ Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load t
 
 In projects, read the key from an env var (`NEXT_PUBLIC_WENDUNG_KEY`, `VITE_WENDUNG_KEY`, or equivalent). If no key is available, ask the user for it; do not invent one. The browser SDK needs a publishable key that starts with `pk_`; ingest rejects secret `sk_` keys from a browser.
 
-Call `init()` once at app startup, client-side, before any other Wendung call. Every other method except `getConsent()` throws `[Wendung] Call .init() first` until it runs. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
+Call `init()` once at app startup, client-side, before any other Wendung call. Calls made before it are lost: SDK versions after 0.3.1 drop them (with `debug: true`, `init()` logs how many), and 0.3.1 and earlier throw `[Wendung] Call .init() first`. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
 
 ### init() options
 
@@ -99,7 +99,7 @@ With MCP write access, `update_project` sets `allowedOrigins` and `devMode`. Ask
 | `Wendung.flush()` | Sends at most one batch per call. Resolves after the request settles; never rejects. |
 | `Wendung.sendBeacon()` | Drains the entire queue as parallel `fetch(..., { keepalive: true })` requests. Despite the name it never uses `navigator.sendBeacon`. This is what runs automatically on page hide. |
 | `Wendung.reset()` | Call on logout. Starts a non-awaited `sendBeacon()` delivery attempt for queued events, then clears the current and persisted identity and rotates the session and anonymous IDs. Queued events keep the identity captured when tracked. Delivery is not guaranteed; normal retry and drop rules still apply. |
-| `Wendung.destroy()` | Stops the timer and listeners, then fires one final non-awaited batch; remaining events are lost. If delivery matters, `await Wendung.sendBeacon()` first. After destroy, every call throws until `init()` runs again. |
+| `Wendung.destroy()` | Stops the timer and listeners, then fires one final non-awaited batch; remaining events are lost. If delivery matters, `await Wendung.sendBeacon()` first. After destroy, calls are dropped until `init()` runs again (0.3.1 and earlier throw). |
 | `Wendung.setConsent(state)` | `'granted'` starts full analytics. After pending aggregate collection, it sends the queued aggregate batch without recounting the current page or linking earlier pageviews to the visitor. Call `identify()` again if the user is known. `'denied'` stops collection, discards the queue, and clears SDK identifiers. `'pending'` discards the current queue and leaves storage untouched, collecting only aggregate pageviews if `trackPageviews` is `'auto'`. Repeating the current state does nothing. |
 | `Wendung.getConsent()` | Returns the current state. Do not guard `page()` or `flush()` on granted consent if pending aggregate collection is intended. The SDK enforces the configured behavior. |
 
@@ -160,7 +160,7 @@ Same rules everywhere: init once at startup in browser code, `step()` from event
 ## Instrumenting funnels well
 
 - Use stable snake_case action names that match funnel steps in the dashboard: `signup_completed`, `checkout_started`. This is a convention, not enforced by the SDK.
-- When the app needs consent for analytics (EU visitors, an existing cookie banner), init with `consent: 'pending'`, restore the saved choice on later loads, and call `setConsent()` from the banner's callbacks. Do not delay `init()` instead: tracking calls throw before `init()`. Pending consent drops custom events and identification; it collects aggregate pageviews only with `trackPageviews: 'auto'`. Guide: https://docs.wendung.app/guides/consent.md
+- When the app needs consent for analytics (EU visitors, an existing cookie banner), init with `consent: 'pending'`, restore the saved choice on later loads, and call `setConsent()` from the banner's callbacks. Do not delay `init()` instead: calls made before `init()` are lost. Pending consent drops custom events and identification; it collects aggregate pageviews only with `trackPageviews: 'auto'`. Guide: https://docs.wendung.app/guides/consent.md
 - Do not model pageviews as steps. Funnels are built from actions (`signup_completed`, `checkout_started`); traffic comes from `trackPageviews`, which the dashboard reports per site.
 - Properties carry event-specific context. User-level data belongs in identify traits.
 
