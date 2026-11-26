@@ -14,7 +14,7 @@
   "keywords": ["analytics", "funnels", "conversion", "web-analytics", "mcp"],
   "icon": "./assets/logo.png",
   "documentationUrl": "https://docs.wendung.app/agents",
-  "supportUrl": "mailto:hello@wendung.app",
+  "supportUrl": "https://github.com/wendung/skills/issues",
   "privacyPolicyUrl": "https://wendung.app/legal/privacy",
   "termsOfServiceUrl": "https://wendung.app/legal/terms"
 }
