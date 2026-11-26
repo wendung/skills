@@ -64,7 +64,7 @@ Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load t
 
 In projects, read the key from an env var (`NEXT_PUBLIC_WENDUNG_KEY`, `VITE_WENDUNG_KEY`, or equivalent). If no key is available, ask the user for it; do not invent one. The browser SDK needs a publishable key that starts with `pk_`; ingest rejects secret `sk_` keys from a browser.
 
-Call `init()` once at app startup, client-side, before any other Wendung call. Every other method except `getConsent()` throws `[Wendung] Call .init() first` until it runs. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
+Call `init()` once at app startup, client-side, before any other Wendung call. SDK versions after 0.3.1 drop calls made before it (with `debug: true`, `init()` logs how many); 0.3.1 and earlier throw `[Wendung] Call .init() first`, which can crash the caller. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
 
 ### init() options
 
@@ -99,7 +99,7 @@ With MCP write access, `update_project` sets `allowedOrigins` and `devMode`. Ask
 | `Wendung.flush()` | Sends at most one batch per call. Resolves after the request settles; never rejects. |
 | `Wendung.sendBeacon()` | Drains the entire queue as parallel `fetch(..., { keepalive: true })` requests. Despite the name it never uses `navigator.sendBeacon`. This is what runs automatically on page hide. |
 | `Wendung.reset()` | Call on logout. Starts a non-awaited `sendBeacon()` delivery attempt for queued events, then clears the current and persisted identity and rotates the session and anonymous IDs. Queued events keep the identity captured when tracked. Delivery is not guaranteed; normal retry and drop rules still apply. |
-| `Wendung.destroy()` | Stops the timer and listeners, then fires one final non-awaited batch; remaining events are lost. If delivery matters, `await Wendung.sendBeacon()` first. After destroy, every call throws until `init()` runs again. |
+| `Wendung.destroy()` | Stops the timer and listeners, then fires one final non-awaited batch; remaining events are lost. If delivery matters, `await Wendung.sendBeacon()` first. After destroy, calls are dropped until `init()` runs again (0.3.1 and earlier throw). |
 | `Wendung.setConsent(state)` | `'granted'` starts full analytics. After pending aggregate collection, it sends the queued aggregate batch without recounting the current page or linking earlier pageviews to the visitor. Call `identify()` again if the user is known. `'denied'` stops collection, discards the queue, and clears SDK identifiers. `'pending'` discards the current queue and leaves storage untouched, collecting only aggregate pageviews if `trackPageviews` is `'auto'`. Repeating the current state does nothing. |
 | `Wendung.getConsent()` | Returns the current state. Do not guard `page()` or `flush()` on granted consent if pending aggregate collection is intended. The SDK enforces the configured behavior. |
 
@@ -125,27 +125,27 @@ Pageview totals include aggregate and consented traffic. Unique visitors, curren
 
 ### Next.js (App Router)
 
-Initialize in a client provider; the root layout stays a server component.
+Initialize at module scope in a client provider; the root layout stays a server component.
 
 ```tsx
 // app/providers/wendung-provider.tsx
 'use client'
 
-import { useEffect } from 'react'
 import { Wendung } from '@wendung/sdk'
 
-export function WendungProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    Wendung.init({
-      apiKey: process.env.NEXT_PUBLIC_WENDUNG_KEY!,
-      consent: 'pending', // Use the saved visitor choice when available.
-    })
-    return () => Wendung.destroy()
-  }, [])
+if (typeof window !== 'undefined') {
+  Wendung.init({
+    apiKey: process.env.NEXT_PUBLIC_WENDUNG_KEY!,
+    consent: 'pending', // Use the saved visitor choice when available.
+  })
+}
 
+export function WendungProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 ```
+
+Do not call `init()` in a `useEffect`. React runs child effects before parent effects, so `step()` or `identify()` in a page's effect would run before `init()` and be dropped.
 
 Wrap `children` with `<WendungProvider>` in `app/layout.tsx` and connect the consent manager to `setConsent()`. Identify after consent is granted, including when the user is already signed in. For web analytics, choose `trackPageviews: true` or `'auto'` as described above; the SDK follows App Router navigations on its own. Identify from a null component that watches the auth session and consent state. Full guide: https://docs.wendung.app/guides/nextjs.md
 
@@ -160,7 +160,7 @@ Same rules everywhere: init once at startup in browser code, `step()` from event
 ## Instrumenting funnels well
 
 - Use stable snake_case action names that match funnel steps in the dashboard: `signup_completed`, `checkout_started`. This is a convention, not enforced by the SDK.
-- When the app needs consent for analytics (EU visitors, an existing cookie banner), init with `consent: 'pending'`, restore the saved choice on later loads, and call `setConsent()` from the banner's callbacks. Do not delay `init()` instead: tracking calls throw before `init()`. Pending consent drops custom events and identification; it collects aggregate pageviews only with `trackPageviews: 'auto'`. Guide: https://docs.wendung.app/guides/consent.md
+- When the app needs consent for analytics (EU visitors, an existing cookie banner), init with `consent: 'pending'`, restore the saved choice on later loads, and call `setConsent()` from the banner's callbacks. Do not delay `init()` instead: calls made before `init()` are lost. Pending consent drops custom events and identification; it collects aggregate pageviews only with `trackPageviews: 'auto'`. Guide: https://docs.wendung.app/guides/consent.md
 - Do not model pageviews as steps. Funnels are built from actions (`signup_completed`, `checkout_started`); traffic comes from `trackPageviews`, which the dashboard reports per site.
 - Properties carry event-specific context. User-level data belongs in identify traits.
 
@@ -199,6 +199,6 @@ Set `debug: true` and watch the console. A delivered batch logs `[Wendung] inges
 | `400` | Invalid payload | Use plain, JSON-serializable `step()` properties with at most 20 top-level keys. Check the response reason for other validation errors. |
 | `413` | Request body exceeds 51,200 bytes (50 KiB) | Reduce properties, traits, or `maxBatchSize`. The SDK does not split batches by bytes. |
 
-Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment.
+Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment. `[Wendung] Dropped N call(s) made before init()` means `init()` ran after those calls; see the Next.js pattern above. `setConsent(...) was called before init() and dropped` means the app must pass the choice to `init()` as `consent`.
 
 Verify end-to-end delivery on the project's Events page in the dashboard, or with the `wendung` MCP server's `get_ingest_health` and `get_ingest_logs` tools if it is connected. Full reference: https://docs.wendung.app/configuration/debugging.md
