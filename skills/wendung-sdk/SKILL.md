@@ -64,7 +64,7 @@ Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load t
 
 In projects, read the key from an env var (`NEXT_PUBLIC_WENDUNG_KEY`, `VITE_WENDUNG_KEY`, or equivalent). If no key is available, ask the user for it; do not invent one. The browser SDK needs a publishable key that starts with `pk_`; ingest rejects secret `sk_` keys from a browser.
 
-Call `init()` once at app startup, client-side, before any other Wendung call. Calls made before it are lost: SDK versions after 0.3.1 drop them (with `debug: true`, `init()` logs how many), and 0.3.1 and earlier throw `[Wendung] Call .init() first`. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
+Call `init()` once at app startup, client-side, before any other Wendung call. SDK versions after 0.3.1 drop calls made before it (with `debug: true`, `init()` logs how many); 0.3.1 and earlier throw `[Wendung] Call .init() first`, which can crash the caller. `init()` is re-entrant: calling it again tears down the previous instance first, so React Strict Mode and HMR are safe.
 
 ### init() options
 
@@ -199,6 +199,6 @@ Set `debug: true` and watch the console. A delivered batch logs `[Wendung] inges
 | `400` | Invalid payload | Use plain, JSON-serializable `step()` properties with at most 20 top-level keys. Check the response reason for other validation errors. |
 | `413` | Request body exceeds 51,200 bytes (50 KiB) | Reduce properties, traits, or `maxBatchSize`. The SDK does not split batches by bytes. |
 
-Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment.
+Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment. `[Wendung] Dropped N call(s) made before init()` means `init()` ran after those calls; see the Next.js pattern above. `setConsent(...) was called before init() and dropped` means the app must pass the choice to `init()` as `consent`.
 
 Verify end-to-end delivery on the project's Events page in the dashboard, or with the `wendung` MCP server's `get_ingest_health` and `get_ingest_logs` tools if it is connected. Full reference: https://docs.wendung.app/configuration/debugging.md
