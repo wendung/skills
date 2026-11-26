@@ -1,0 +1,20 @@
+{
+  "name": "wendung",
+  "displayName": "Wendung",
+  "version": "1.0.0",
+  "description": "Funnel and web analytics for apps you build with coding agents: the wendung-sdk skill for setup and funnel steps, plus MCP servers for live analytics and docs search.",
+  "author": {
+    "name": "Wendung",
+    "email": "hello@wendung.app",
+    "url": "https://wendung.app"
+  },
+  "homepage": "https://docs.wendung.app/agents",
+  "repository": "https://github.com/wendung/skills",
+  "license": "MIT",
+  "keywords": ["analytics", "funnels", "conversion", "web-analytics", "mcp"],
+  "icon": "./assets/logo.png",
+  "documentationUrl": "https://docs.wendung.app/agents",
+  "supportUrl": "mailto:hello@wendung.app",
+  "privacyPolicyUrl": "https://wendung.app/legal/privacy",
+  "termsOfServiceUrl": "https://wendung.app/legal/terms"
+}

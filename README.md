@@ -14,6 +14,16 @@ This installs every skill in this repo for your configured agents. To install a 
 npx skills add wendung/skills --skill wendung-sdk
 ```
 
+### Claude Code plugin
+
+The `wendung` plugin installs the skill and connects both Wendung MCP servers in one step:
+
+```
+/plugin install wendung --marketplace wendung/skills
+```
+
+On Claude Code versions before 2.1.275, add the marketplace first with `/plugin marketplace add wendung/skills`, then run `/plugin install wendung@wendung`. The analytics server asks you to sign in to Wendung the first time your agent uses it.
+
 ## Skills
 
 | Skill | Description |
@@ -23,6 +33,8 @@ npx skills add wendung/skills --skill wendung-sdk
 ## Contributing
 
 Each skill lives in `skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`) followed by the skill body. The `wendung-sdk` skill is also published at https://docs.wendung.app/skills/wendung-sdk.yaml; keep the two copies in sync when editing.
+
+The repository root is also the `wendung` plugin. `.claude-plugin/` holds the Claude Code manifest and marketplace, `.cursor-plugin/plugin.json` the Cursor manifest, and `.mcp.json` the two MCP servers that both share. The plugin name is permanent: installs are recorded under it.
 
 ## License
 

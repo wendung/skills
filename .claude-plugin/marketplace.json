@@ -1,0 +1,14 @@
+{
+  "name": "wendung",
+  "description": "Wendung funnel and web analytics for Claude Code: the wendung-sdk skill and the Wendung MCP servers.",
+  "owner": {
+    "name": "Wendung",
+    "email": "hello@wendung.app"
+  },
+  "plugins": [
+    {
+      "name": "wendung",
+      "source": "./"
+    }
+  ]
+}

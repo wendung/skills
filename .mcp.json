@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "wendung": {
+      "type": "http",
+      "url": "https://api.wendung.app/mcp"
+    },
+    "wendung-docs": {
+      "type": "http",
+      "url": "https://docs.wendung.app/mcp"
+    }
+  }
+}
