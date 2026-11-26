@@ -80,10 +80,10 @@ Call `init()` once at app startup, client-side, before any other Wendung call. E
 
 ### Allowed origins
 
-Ingest accepts events only from origins on the project's allowed origins list. A new project starts with an empty list and rejects every event with `403` until the user adds an origin, including on localhost. Tell the user this before they test:
+Ingest accepts events only from origins on the project's allowed origins list. A new project starts with an empty list and with Dev mode on for 24 hours, so it accepts localhost and rejects every other origin with `403` until the user adds it. Tell the user this before they test:
 
 - Add each production origin under the project's Settings → Allowed origins. An origin is scheme, host, and port only: `https://example.com` and `https://www.example.com` are different origins.
-- For local development, turn on Dev mode on the same page. For 24 hours it accepts loopback origins on any port (`localhost`, `*.localhost`, `127.x.x.x`, `[::1]`), then switches itself off. LAN addresses such as `http://192.168.1.20:3000` are not loopback; add them to the list to test from another device.
+- For local development, Dev mode on the same page accepts loopback origins on any port (`localhost`, `*.localhost`, `127.x.x.x`, `[::1]`) for 24 hours, then switches itself off. A new project starts with it on. After that, the user turns it on again. LAN addresses such as `http://192.168.1.20:3000` are not loopback; add them to the list to test from another device.
 - Requests with a publishable key and no `Origin` header are rejected, so the browser SDK can't send events from server code, Node scripts, or `curl`. Server code sends steps with a secret key instead. See [Server-side events](#server-side-events).
 - Changes can take a few minutes to reach the ingest endpoint.
 
@@ -194,7 +194,7 @@ Set `debug: true` and watch the console. A delivered batch logs `[Wendung] inges
 | Status | Cause | Fix |
 |---|---|---|
 | `401` | Missing, malformed, or unknown API key | Check the env var reaches the browser bundle and holds the project's `pk_` key. |
-| `403` | The page's origin is not allowed | See [Allowed origins](#allowed-origins). A new project rejects every origin. |
+| `403` | The page's origin is not allowed | See [Allowed origins](#allowed-origins). A new project rejects every origin except loopback, which Dev mode accepts for its first 24 hours. |
 | `429` | Monthly event quota used up, or rate limited | Check usage and plan in the dashboard. |
 | `400` | Invalid payload | Use plain, JSON-serializable `step()` properties with at most 20 top-level keys. Check the response reason for other validation errors. |
 | `413` | Request body exceeds 51,200 bytes (50 KiB) | Reduce properties, traits, or `maxBatchSize`. The SDK does not split batches by bytes. |
