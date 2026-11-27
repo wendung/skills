@@ -55,7 +55,7 @@ Wendung.init({
 })
 ```
 
-Only `apiKey` is required. This example collects nothing while pending. Connect `setConsent()` to the app's consent manager and restore its saved choice on each load. If omitted, `consent` defaults to `'granted'`. If the app has no consent manager, ask the user which setup they want before choosing: `'pending'` without a `setConsent()` call records no steps at all. Add optional configuration to this same `init()` call.
+Only `apiKey` is required. This example collects nothing while pending. Connect `setConsent()` to the app's consent manager and restore its saved choice on each load. If omitted, `consent` defaults to `'granted'`. If the app has no consent manager, ask the user whether to add one or to omit `consent` so the SDK starts granted. `'pending'` without a `setConsent()` call records no steps at all. Add optional configuration to this same `init()` call.
 
 Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load the same SDK from the CDN instead. The tag initializes the SDK from its data attributes and exposes `Wendung` on `window`; `data-track-pageviews` accepts a bare attribute or `"true"` for consent-required pageviews, `"auto"` for aggregate pageviews while pending and full pageviews after consent, or `"false"` to disable automatic pageviews. `data-debug` is a presence flag; `data-endpoint` overrides the ingest URL. Use `defer`, never `async`, and give your own scripts that call `Wendung` `defer` too. `/sdk/v0/wendung.js` tracks the latest 0.x release; `/sdk/<version>/wendung.js` pins one. Guide: https://docs.wendung.app/guides/script-tag
 
@@ -148,7 +148,7 @@ export function WendungProvider({ children }: { children: React.ReactNode }) {
 
 Do not call `init()` in a `useEffect`. React runs child effects before parent effects, so `step()` or `identify()` in a page's effect would run before `init()` and be dropped.
 
-Wrap `children` with `<WendungProvider>` in `app/layout.tsx` and connect the consent manager to `setConsent()`. Identify after consent is granted, including when the user is already signed in. For web analytics, choose `trackPageviews: true` or `'auto'` as described above; the SDK follows App Router navigations on its own. Identify from a null component that watches the auth session and consent state. Full guide: https://docs.wendung.app/guides/nextjs.md
+Wrap `children` with `<WendungProvider>` in `app/layout.tsx` and connect the consent manager to `setConsent()`. If there is none, ask the user first, as described under Install and initialize. Identify after consent is granted, including when the user is already signed in. For web analytics, choose `trackPageviews: true` or `'auto'` as described above; the SDK follows App Router navigations on its own. Identify from a null component that watches the auth session and consent state. Full guide: https://docs.wendung.app/guides/nextjs.md
 
 ### React SPA (Vite, React Router)
 
@@ -200,6 +200,6 @@ Set `debug: true` and watch the console. A delivered batch logs `[Wendung] inges
 | `400` | Invalid payload | Use plain, JSON-serializable `step()` properties with at most 20 top-level keys. Check the response reason for other validation errors. |
 | `413` | Request body exceeds 51,200 bytes (50 KiB) | Reduce properties, traits, or `maxBatchSize`. The SDK does not split batches by bytes. |
 
-Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment. `[Wendung] Dropped N call(s) made before init()` means `init()` ran after those calls; see the Next.js pattern above. `setConsent(...) was called before init() and dropped` means the app must pass the choice to `init()` as `consent`.
+Re-queuing messages mean a network error or a 5xx response; the batch is retried. `ingest dropped N pageview event(s)` means the plan has no pageview allowance or it is used up. `fetch is unavailable` means an unsupported environment. `[Wendung] Dropped N call(s) made before init()` means `init()` ran after those calls; see the Next.js pattern above. `setConsent(...) was called before init() and dropped` means the app must pass the choice to `init()` as `consent`. No `[Wendung]` output after `step()` with `debug` on usually means consent is still `'pending'`.
 
 Verify end-to-end delivery on the project's Events page in the dashboard, or with the `wendung` MCP server's `get_ingest_health` and `get_ingest_logs` tools if it is connected. Full reference: https://docs.wendung.app/configuration/debugging.md
