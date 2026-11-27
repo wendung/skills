@@ -55,7 +55,7 @@ Wendung.init({
 })
 ```
 
-Only `apiKey` is required. This example collects nothing while pending. Connect `setConsent()` to the app's consent manager and restore its saved choice on each load. If omitted, `consent` defaults to `'granted'`. Add optional configuration to this same `init()` call.
+Only `apiKey` is required. This example collects nothing while pending. Connect `setConsent()` to the app's consent manager and restore its saved choice on each load. If omitted, `consent` defaults to `'granted'`. If the app has no consent manager, ask the user which setup they want before choosing: `'pending'` without a `setConsent()` call records no steps at all. Add optional configuration to this same `init()` call.
 
 Sites without a build step (plain HTML, Hugo, Jekyll, Webflow, WordPress) load the same SDK from the CDN instead. The tag initializes the SDK from its data attributes and exposes `Wendung` on `window`; `data-track-pageviews` accepts a bare attribute or `"true"` for consent-required pageviews, `"auto"` for aggregate pageviews while pending and full pageviews after consent, or `"false"` to disable automatic pageviews. `data-debug` is a presence flag; `data-endpoint` overrides the ingest URL. Use `defer`, never `async`, and give your own scripts that call `Wendung` `defer` too. `/sdk/v0/wendung.js` tracks the latest 0.x release; `/sdk/<version>/wendung.js` pins one. Guide: https://docs.wendung.app/guides/script-tag
 
