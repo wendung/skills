@@ -1,7 +1,7 @@
 {
   "name": "wendung",
   "displayName": "Wendung",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Funnel and web analytics for apps you build with coding agents: the wendung-sdk skill for setup and funnel steps, plus MCP servers for live analytics and docs search.",
   "author": {
     "name": "Wendung",
