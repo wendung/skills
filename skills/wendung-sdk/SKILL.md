@@ -31,7 +31,7 @@ Wendung provides two MCP servers. Everything in this skill works without them, b
 The SDK needs the publishable API key of a Wendung project. Before changing code, confirm the user has one, and point them to the missing step:
 
 1. **Account.** Sign up at https://dashboard.wendung.app/auth/sign-up, or sign in at https://dashboard.wendung.app/auth/sign-in. A new account must confirm its email address before the dashboard opens.
-2. **Workspace and project.** Projects live in a workspace. If `list_workspaces` or the dashboard shows none, the user creates one in the dashboard first, then a project inside it. The free plan allows one project and does not include pageviews.
+2. **Workspace and project.** Projects live in a workspace. If `list_workspaces` or the dashboard shows none, the user creates one in the dashboard first, then a project inside it. The free plan allows one project, two funnels, 10,000 events, and 50,000 pageviews a month.
 3. **API key.** Every project has a key named Default under the project's Settings → API keys. Keys start with `pk_`. They are publishable, not secret: the key ships in the browser bundle, and ingest accepts it only from origins the project allows. The user adds it to the app's env file, or to the script tag on sites without a build step.
 
 If the `wendung` MCP server is connected, `list_workspaces` and `list_projects` show what already exists. With write access, `list_api_keys` returns a project's publishable key and `create_project` creates a project and returns its key. Write a returned key to the env file, or to the script tag on sites without a build step, instead of repeating it in chat.
